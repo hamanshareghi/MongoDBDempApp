@@ -43,3 +43,5 @@ var chore = new ChoreModel()
     FrequencyInDays = 7
 };
 await db.CreateChore(chore);
+
+await db.CompleteChore(chore);

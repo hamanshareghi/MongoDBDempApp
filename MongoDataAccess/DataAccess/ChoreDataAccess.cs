@@ -71,11 +71,34 @@ public class ChoreDataAccess
 
     public async Task CompleteChore(ChoreModel chore)
     {
-        var choreCollection = ConnectToMongo<ChoreModel>(ChoreCollection);
-        var filter = Builders<ChoreModel>.Filter.Eq("Id", chore.Id);
-        await choreCollection.ReplaceOneAsync(filter, chore);
+        //var choreCollection = ConnectToMongo<ChoreModel>(ChoreCollection);
+        //var filter = Builders<ChoreModel>.Filter.Eq("Id", chore.Id);
+        //await choreCollection.ReplaceOneAsync(filter, chore);
 
-        var chorHistoryCollection = ConnectToMongo<ChoreHistoryModel>(ChoreHistoryCollection);
-        await chorHistoryCollection.InsertOneAsync(new ChoreHistoryModel(chore));
+        //var chorHistoryCollection = ConnectToMongo<ChoreHistoryModel>(ChoreHistoryCollection);
+        //await chorHistoryCollection.InsertOneAsync(new ChoreHistoryModel(chore));
+
+        var client = new MongoClient(ConnectionString);
+        using var session = await client.StartSessionAsync();
+        session.StartTransaction();
+
+        try
+        {
+            var db = client.GetDatabase(DatabaseName);
+            var choresCollection = db.GetCollection<ChoreModel>(ChoreCollection);
+            var filter = Builders<ChoreModel>.Filter.Eq("Id", chore.Id);
+            await choresCollection.ReplaceOneAsync(filter, chore);
+
+            var choreHistoryCollection = db.GetCollection<ChoreHistoryModel>(ChoreHistoryCollection);
+            await choreHistoryCollection.InsertOneAsync(new ChoreHistoryModel(chore));
+            await session.CommitTransactionAsync();
+
+
+        }
+        catch (Exception ex)
+        {
+            await session.AbortTransactionAsync();
+            Console.WriteLine(ex.Message); 
+        }
     }
 }
